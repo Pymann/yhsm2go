@@ -72,7 +72,7 @@ func YH_set_verbosity(connector *YH_connector, verbosity uint8) YH_rc {
 	return YH_rc(C.yh_set_verbosity((*C.yh_connector)(unsafe.Pointer(connector)), C.uint8_t(verbosity)))
 }
 
-func YH_getet_verbosity(verbosity *uint8) YH_rc {
+func YH_get_verbosity(verbosity *uint8) YH_rc {
 	return YH_rc(C.yh_get_verbosity((*C.uint8_t)(unsafe.Pointer(verbosity))))
 }
 
@@ -83,7 +83,7 @@ func YH_getet_verbosity(verbosity *uint8) YH_rc {
 func YH_util_get_device_info(connector *YH_connector, major,
                               minor, patch *uint8, serial *uint32,
                               log_total, log_used *uint8,
-                              algorithms *YH_algorithm, n_algorithms *int) YH_rc {
+                              algorithms []YH_algorithm, n_algorithms *int) YH_rc {
 
 	return YH_rc(C.yh_util_get_device_info((*C.yh_connector)(unsafe.Pointer(connector)),
 																	(*C.uint8_t)(unsafe.Pointer(major)),
@@ -92,7 +92,7 @@ func YH_util_get_device_info(connector *YH_connector, major,
 																	(*C.uint32_t)(unsafe.Pointer(serial)),
 																	(*C.uint8_t)(unsafe.Pointer(log_total)),
 																	(*C.uint8_t)(unsafe.Pointer(log_used)),
-																	(*C.yh_algorithm)(unsafe.Pointer(algorithms)),
+																	(*C.yh_algorithm)(unsafe.Pointer(&algorithms[0])),
 																	(*C.size_t)(unsafe.Pointer(n_algorithms))))
 }
 

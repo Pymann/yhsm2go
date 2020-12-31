@@ -28,6 +28,15 @@ func main() {
   rc = ygo.YH_connect(conn, 0)
   print_rc(rc)
 
+  var major, minor, patch uint8
+  var serial uint32
+  var log_total, log_used uint8
+  algorithms := make([]ygo.YH_algorithm, 100)
+  var n_algorithms int = 100
+  rc = ygo.YH_util_get_device_info(conn, &major, &minor, &patch, &serial, &log_total, &log_used, algorithms, &n_algorithms)
+  print_rc(rc)
+  fmt.Printf("Device Info:\nFirmware: %d.%d.%d\nSerial: %d\nLogs %d/%d\nAlgos[%d]: %d\n", major, minor, patch, serial, log_total, log_used, n_algorithms, algorithms)
+
   fmt.Println("getting session...")
   sess, rc = ygo.YH_create_session_derived(conn, auth_id, password, false)
   print_rc(rc)
@@ -35,6 +44,11 @@ func main() {
   fmt.Println("authenticating...")
   rc = ygo.YH_authenticate_session(sess)
   print_rc(rc)
+
+  var total_records, free_records, total_pages, free_pages, page_size uint16
+  rc = ygo.YH_util_get_storage_info(sess, &total_records, &free_records, &total_pages, &free_pages, &page_size)
+  print_rc(rc)
+  fmt.Printf("total_records: %d\nfree_records: %d\ntotal_pages: %d\nfree_pages: %d\npage_size: %d\n", total_records, free_records, total_pages, free_pages, page_size)
 
   len := int(30)
   fmt.Println("getting pseudo random...")
@@ -125,7 +139,7 @@ func main() {
   object_id := uint16(0)
   yh_opaque_caps, rc := ygo.YH_string_to_capabilities("exportable-under-wrap")
   print_rc(rc)
-  rc = ygo.YH_util_import_opaque(sess, &object_id, label, domains, yh_opaque_caps, ygo.YH_ALGO_EC_ECDH, wrapped_master)
+  rc = ygo.YH_util_import_opaque(sess, &object_id, label, domains, yh_opaque_caps, ygo.YH_ALGO_OPAQUE_DATA, wrapped_master)
   print_rc(rc)
 
   get_opaque, rc := ygo.YH_util_get_opaque(sess, object_id, 10000)

@@ -152,7 +152,7 @@ const (
  * @see <a
  * hrefYH_rc ="https://developers.yubico.com/YubiHSM2/Concepts/Algorithms.html">Objects</a>
  */
-type YH_algorithm int
+type YH_algorithm int32
 
 const (
   /// rsa-pkcs1-sha1
