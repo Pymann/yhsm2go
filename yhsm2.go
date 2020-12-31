@@ -150,7 +150,7 @@ func YH_util_import_authentication_key_derived(	session *YH_session,
 																								password string) YH_rc {
 	l := C.CString(label)
 	p := C.CString(password)
-	result := C.yh_util_import_authentication_key_derived(	(*C.yh_session)(unsafe.Pointer(session)),
+	rc := C.yh_util_import_authentication_key_derived(	(*C.yh_session)(unsafe.Pointer(session)),
 																													(*C.uint16_t)(unsafe.Pointer(key_id)),
 																													l, (C.uint16_t)(domains),
 																													(*C.yh_capabilities)(unsafe.Pointer(capabilities)),
@@ -159,7 +159,7 @@ func YH_util_import_authentication_key_derived(	session *YH_session,
 																													(C.size_t)(len(password)))
 	C.free(unsafe.Pointer(l))
 	C.free(unsafe.Pointer(p))
-	return YH_rc(result)
+	return YH_rc(rc)
 }
 
 /*yh_rc yh_util_get_pseudo_random(yh_session *session, size_t len, uint8_t *out,
@@ -192,14 +192,199 @@ func YH_util_generate_wrap_key(	session *YH_session,
 																algorithm YH_algorithm,
 																del_capabilites *YH_capabilities) YH_rc {
 	l := C.CString(label)
-	result := C.yh_util_generate_wrap_key((*C.yh_session)(unsafe.Pointer(session)),
+	rc := C.yh_util_generate_wrap_key((*C.yh_session)(unsafe.Pointer(session)),
 																				(*C.uint16_t)(unsafe.Pointer(key_id)),
 																				l, (C.uint16_t)(domains),
 																				(*C.yh_capabilities)(unsafe.Pointer(capabilities)),
 																				(C.yh_algorithm)(algorithm),
 																				(*C.yh_capabilities)(unsafe.Pointer(del_capabilites)))
 	C.free(unsafe.Pointer(l))
-	return YH_rc(result)
+	return YH_rc(rc)
+}
+
+/*yh_rc yh_util_export_wrapped(yh_session *session, uint16_t wrapping_key_id,
+													 yh_object_type target_type, uint16_t target_id,
+													 uint8_t *out, size_t *out_len);*/
+func YH_util_export_wrapped(	session *YH_session,
+															wrapping_key_id uint16,
+															target_type YH_object_type,
+															target_id uint16,
+															max_out_len int) ([]byte, YH_rc) {
+
+	out_len := int(max_out_len)
+	ba := make([]byte, out_len)
+	cba := C.CBytes(ba)
+	rc := C.yh_util_export_wrapped(	(*C.yh_session)(unsafe.Pointer(session)),
+																	(C.uint16_t)(wrapping_key_id),
+																	(C.yh_object_type)(target_type),
+																	(C.uint16_t)(target_id),
+																	(*C.uint8_t)(cba),
+																	(*C.size_t)(unsafe.Pointer(&out_len)))
+
+	ba = C.GoBytes(cba, C.int(out_len))
+	C.free(cba)
+	return ba, YH_rc(rc)
+}
+
+/*yh_rc yh_util_import_wrapped(yh_session *session, uint16_t wrapping_key_id,
+													 const uint8_t *in, size_t in_len,
+													 yh_object_type *target_type, uint16_t *target_id);*/
+func YH_util_import_wrapped(	session *YH_session,
+															wrapping_key_id uint16,
+															in []byte,
+															target_type *YH_object_type,
+															target_id *uint16) YH_rc {
+
+	in_len := int(len(in))
+	cba := C.CBytes(in)
+	rc := C.yh_util_import_wrapped(	(*C.yh_session)(unsafe.Pointer(session)),
+																			(C.uint16_t)(wrapping_key_id),
+																			(*C.uint8_t)(cba),
+																			(C.size_t)(in_len),
+																			(*C.yh_object_type)(unsafe.Pointer(target_type)),
+																			(*C.uint16_t)(unsafe.Pointer(target_id)))
+
+	C.free(cba)
+	return YH_rc(rc)
+}
+
+/*yh_rc yh_util_import_wrap_key(yh_session *session, uint16_t *key_id,
+														const char *label, uint16_t domains,
+														const yh_capabilities *capabilities,
+														yh_algorithm algorithm,
+														const yh_capabilities *delegated_capabilities,
+														const uint8_t *in, size_t in_len);*/
+func YH_util_import_wrap_key(	session *YH_session,
+																key_id *uint16,
+																label string,
+																domains uint16,
+																capabilities *YH_capabilities,
+																algorithm YH_algorithm,
+																del_capabilites *YH_capabilities,
+																in []byte) YH_rc {
+	in_len := int(len(in))
+	cba := C.CBytes(in)
+	l := C.CString(label)
+	rc := C.yh_util_import_wrap_key(	(*C.yh_session)(unsafe.Pointer(session)),
+																				(*C.uint16_t)(unsafe.Pointer(key_id)),
+																				l, (C.uint16_t)(domains),
+																				(*C.yh_capabilities)(unsafe.Pointer(capabilities)),
+																				(C.yh_algorithm)(algorithm),
+																				(*C.yh_capabilities)(unsafe.Pointer(del_capabilites)),
+																				(*C.uint8_t)(cba),
+																				(C.size_t)(in_len))
+	C.free(cba)
+	C.free(unsafe.Pointer(l))
+	return YH_rc(rc)
+}
+
+/*yh_rc yh_util_wrap_data(	yh_session *session,
+							uint16_t key_id,
+							const uint8_t *in,
+							size_t in_len,
+							uint8_t *out,
+							size_t *out_len);*/
+func YH_util_wrap_data(	session *YH_session,
+															key_id uint16,
+															in []byte,
+															max_out_len int) ([]byte, YH_rc) {
+
+	in_len := int(len(in))
+	cba_in := C.CBytes(in)
+	out_len := int(max_out_len)
+	ba_out := make([]byte, out_len)
+	cba_out := C.CBytes(ba_out)
+	rc := C.yh_util_wrap_data(	(*C.yh_session)(unsafe.Pointer(session)),
+																	(C.uint16_t)(key_id),
+																	(*C.uint8_t)(cba_in),
+																	(C.size_t)(in_len),
+																	(*C.uint8_t)(cba_out),
+																	(*C.size_t)(unsafe.Pointer(&out_len)))
+
+	ba := C.GoBytes(cba_out, C.int(out_len))
+	C.free(cba_out)
+	C.free(cba_in)
+	return ba, YH_rc(rc)
+}
+
+func YH_util_unwrap_data(	session *YH_session,
+															key_id uint16,
+															in []byte,
+															max_out_len int) ([]byte, YH_rc) {
+
+	in_len := int(len(in))
+	cba_in := C.CBytes(in)
+	out_len := int(max_out_len)
+	ba_out := make([]byte, out_len)
+	cba_out := C.CBytes(ba_out)
+	rc := C.yh_util_unwrap_data(	(*C.yh_session)(unsafe.Pointer(session)),
+																	(C.uint16_t)(key_id),
+																	(*C.uint8_t)(cba_in),
+																	(C.size_t)(in_len),
+																	(*C.uint8_t)(cba_out),
+																	(*C.size_t)(unsafe.Pointer(&out_len)))
+
+	ba := C.GoBytes(cba_out, C.int(out_len))
+	C.free(cba_out)
+	C.free(cba_in)
+	return ba, YH_rc(rc)
+}
+
+/*yh_rc yh_util_delete_object(yh_session *session, uint16_t id,
+                            yh_object_type type);*/
+func YH_util_delete_object(session *YH_session, id uint16, object_type YH_object_type) YH_rc {
+
+	rc := C.yh_util_delete_object( 	(*C.yh_session)(unsafe.Pointer(session)),
+																	(C.uint16_t)(id),
+																	(C.yh_object_type)(object_type))
+
+	return YH_rc(rc)
+}
+
+/*yh_rc yh_util_get_opaque(yh_session *session, uint16_t object_id, uint8_t *out,
+                         size_t *out_len);*/
+func YH_util_get_opaque(	session *YH_session,
+													object_id uint16,
+													max_out_len int) ([]byte, YH_rc) {
+
+	out_len := int(max_out_len)
+	ba_out := make([]byte, out_len)
+	cba_out := C.CBytes(ba_out)
+	rc := C.yh_util_get_opaque(	(*C.yh_session)(unsafe.Pointer(session)),
+															(C.uint16_t)(object_id),
+															(*C.uint8_t)(cba_out),
+															(*C.size_t)(unsafe.Pointer(&out_len)))
+
+	ba := C.GoBytes(cba_out, C.int(out_len))
+	C.free(cba_out)
+	return ba, YH_rc(rc)
+}
+
+/*yh_rc yh_util_import_opaque(yh_session *session, uint16_t *object_id,
+                            const char *label, uint16_t domains,
+                            const yh_capabilities *capabilities,
+                            yh_algorithm algorithm, const uint8_t *in,
+                            size_t in_len);*/
+func YH_util_import_opaque(	session *YH_session,
+														object_id *uint16,
+														label string,
+														domains uint16,
+														capabilities *YH_capabilities,
+														algorithm YH_algorithm,
+														in []byte) YH_rc {
+	in_len := int(len(in))
+	cba := C.CBytes(in)
+	l := C.CString(label)
+	rc := C.yh_util_import_opaque(	(*C.yh_session)(unsafe.Pointer(session)),
+																	(*C.uint16_t)(unsafe.Pointer(object_id)),
+																	l, (C.uint16_t)(domains),
+																	(*C.yh_capabilities)(unsafe.Pointer(capabilities)),
+																	(C.yh_algorithm)(algorithm),
+																	(*C.uint8_t)(cba),
+																	(C.size_t)(in_len))
+	C.free(cba)
+	C.free(unsafe.Pointer(l))
+	return YH_rc(rc)
 }
 
 func YH_util_close_session(session *YH_session) YH_rc {
