@@ -7,6 +7,12 @@ import(
   "errors"
 )
 
+func print_rc(rc ygo.YH_rc) {
+  if rc != 0 {
+    panic(errors.New(fmt.Sprintf("Error %d: %s\n",rc, ygo.YH_strerror(rc))))
+  }
+}
+
 func main() {
 
   yubi_url := "yhusb://"
@@ -170,10 +176,4 @@ func main() {
   rc = ygo.YH_exit()
   print_rc(rc)
 
-}
-
-func print_rc(rc ygo.YH_rc) {
-  if rc != 0 {
-    panic(errors.New(fmt.Sprintf("Error %d: %s\n",rc, ygo.YH_strerror(rc))))
-  }
 }

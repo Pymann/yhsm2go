@@ -1974,7 +1974,14 @@ func YH_string_to_capabilities(capability string) (*YH_capabilities, YH_rc) {
 func YH_capabilities_to_strings(num *YH_capabilities, capability []string, n_result *int) YH_rc {
 	rc := C.yh_capabilities_to_strings((*C.yh_capabilities)(unsafe.Pointer(num)), (*C.size_t)(unsafe.Pointer(n_result)))
 	return &result, YH_rc(rc)
-} -> left out - to inconvenient*/
+}
+func YH_algo_to_string(algo YH_algorithm, result *string) YH_rc {
+	bridge := C.CString(*result)
+	presult := &bridge
+	rc := C.yh_algo_to_string((C.yh_algorithm)(algo), presult)
+	*result = C.GoString(*presult)
+	return YH_rc(rc)
+} -> under construction*/
 
 /**
  * Check if a capability is set
@@ -2133,8 +2140,9 @@ func YH_get_key_bitlength(algorithm YH_algorithm, result *int) YH_rc {
  *href="https://developers.yubico.com/YubiHSM2/Concepts/Algorithms.html">Algorithms</a>
  **/
 func YH_algo_to_string(algo YH_algorithm, result *string) YH_rc {
-	var presult **C.char
-	rc := C.yh_algo_to_string((C.yh_algorithm)(algo), (**C.char)(unsafe.Pointer(presult)))
+	bridge := C.CString(*result)
+	presult := &bridge
+	rc := C.yh_algo_to_string((C.yh_algorithm)(algo), presult)
 	*result = C.GoString(*presult)
 	return YH_rc(rc)
 }
@@ -2191,8 +2199,9 @@ func YH_string_to_algo(algo_str string, algo *YH_algorithm) YH_rc {
  *href="https://developers.yubico.com/YubiHSM2/Concepts/Object.html">Object</a>
  **/
 func YH_type_to_string(object_type YH_object_type, result *string) YH_rc {
-	var presult **C.char
-	rc := C.yh_type_to_string((C.yh_object_type)(object_type), (**C.char)(unsafe.Pointer(presult)))
+	bridge := C.CString(*result)
+	presult := &bridge
+	rc := C.yh_type_to_string((C.yh_object_type)(object_type), presult)
 	*result = C.GoString(*presult)
 	return YH_rc(rc)
 }
@@ -2336,6 +2345,6 @@ func YH_string_to_domains(domains string, result *uint16) YH_rc {
 func YH_domains_to_string(domains uint16, char *string, max_len int) YH_rc {
 	result := make([]byte, max_len)
 	rc := C.yh_domains_to_string((C.uint16_t)(domains), (*C.char)(unsafe.Pointer(&result[0])), (C.size_t)(max_len))
-	*char = string(result)
+	*char = string(result[:max_len])
 	return YH_rc(rc)
 }
