@@ -2,8 +2,9 @@ package main
 
 import(
   "fmt"
-  ygo "github.com/Pymann/yubihsm2"
+  ygo "github.com/Pymann/yhsm2go"
   "reflect"
+  "errors"
 )
 
 func main() {
@@ -35,7 +36,7 @@ func main() {
   var n_algorithms int = 100
   rc = ygo.YH_util_get_device_info(conn, &major, &minor, &patch, &serial, &log_total, &log_used, algorithms, &n_algorithms)
   print_rc(rc)
-  fmt.Printf("Device Info:\nFirmware: %d.%d.%d\nSerial: %d\nLogs %d/%d\nAlgos[%d]: %d\n", major, minor, patch, serial, log_total, log_used, n_algorithms, algorithms)
+  fmt.Printf("Device Info:\nFirmware: %d.%d.%d\nSerial: %d\nLogs %d/%d\nAlgos[%d]: %d\n", major, minor, patch, serial, log_total, log_used, n_algorithms, algorithms[:n_algorithms])
 
   fmt.Println("getting session...")
   sess, rc = ygo.YH_create_session_derived(conn, auth_id, password, false)
@@ -50,11 +51,13 @@ func main() {
   print_rc(rc)
   fmt.Printf("total_records: %d\nfree_records: %d\ntotal_pages: %d\nfree_pages: %d\npage_size: %d\n", total_records, free_records, total_pages, free_pages, page_size)
 
-  len := int(30)
+  rlen := int(30)
+  out_rlen := int(30)
+  ba := make([]byte, out_rlen)
   fmt.Println("getting pseudo random...")
-  ba, rc := ygo.YH_util_get_pseudo_random(sess, len)
+  rc = ygo.YH_util_get_pseudo_random(sess, rlen, ba, &out_rlen)
   print_rc(rc)
-  fmt.Printf("out: %v\n", ba)
+  fmt.Printf("out: %v\n", ba[:out_rlen])
 
   auth_id_new := uint16(0)
   label := "TestLabel"
@@ -114,38 +117,47 @@ func main() {
 
   bck_wkey_id := uint16(0)
   bck_wk := []byte{0x13, 0x4c, 0x99, 0x83, 0x44, 0x23, 0xab, 0xde, 0x12, 0xc3, 0xf0, 0x6d, 0x3a, 0x12, 0xbc, 0x01}
-  rc = ygo.YH_util_import_wrap_key(sess, &bck_wkey_id, label, domains, yh_wkey_caps, ygo.YH_ALGO_AES128_CCM_WRAP,yh_wkey_caps, bck_wk)
+  rc = ygo.YH_util_import_wrap_key(sess, &bck_wkey_id, label, domains, yh_wkey_caps, ygo.YH_ALGO_AES128_CCM_WRAP,yh_wkey_caps, bck_wk, len(bck_wk))
   print_rc(rc)
   fmt.Printf("new bck_wkey: %d\n", bck_wkey_id)
 
   master := []byte{32, 113, 28, 66, 188, 105, 186, 112, 144, 99, 95, 110, 93, 146, 101, 122, 136, 119, 136, 183, 219, 208, 223, 212, 46, 160, 37, 71, 137, 169, 238, 48}
-
-  wrapped_master, rc := ygo.YH_util_wrap_data(sess, wkey_id, master, 10000)
+  wrapped_master_len := 1000
+  wrapped_master := make([]byte, wrapped_master_len)
+  rc = ygo.YH_util_wrap_data(sess, wkey_id, master, len(master), wrapped_master, &wrapped_master_len)
   print_rc(rc)
-  fmt.Printf("wrapped-master: %v\n", wrapped_master)
+  fmt.Printf("wrapped-master: %v\n", wrapped_master[:wrapped_master_len])
 
-  unwrapped_master, rc := ygo.YH_util_unwrap_data(sess, wkey_id, wrapped_master, 10000)
+  out_len_unwrap := int(100)
+  unwrapped_master := make([]byte, out_len_unwrap)
+  rc = ygo.YH_util_unwrap_data(sess, wkey_id, wrapped_master[:wrapped_master_len], wrapped_master_len, unwrapped_master, &out_len_unwrap)
   print_rc(rc)
-  fmt.Printf("unwrapped-master: %v\n", unwrapped_master)
+  fmt.Printf("unwrapped-master: %v\n", unwrapped_master[:out_len_unwrap])
 
-  if reflect.DeepEqual(unwrapped_master, master) {
+  if reflect.DeepEqual(unwrapped_master[:out_len_unwrap], master) {
     fmt.Printf("Normal- and wrapped-unwrapped-seed are deep-equal\n")
+  } else {
+    fmt.Printf("Normal- and wrapped-unwrapped-seed are NOT deep-equal\n")
   }
 
-  export_wkey, rc := ygo.YH_util_export_wrapped(sess, bck_wkey_id, ygo.YH_WRAP_KEY, wkey_id, 10000)
+  export_wkey_len := 1000
+  export_wkey := make([]byte, export_wkey_len)
+  rc = ygo.YH_util_export_wrapped(sess, bck_wkey_id, ygo.YH_WRAP_KEY, wkey_id, export_wkey, &export_wkey_len)
   print_rc(rc)
-  fmt.Printf("Exported Wrapkey: %v\n", export_wkey)
+  fmt.Printf("Exported Wrapkey: %v\n", export_wkey[:export_wkey_len])
 
   object_id := uint16(0)
   yh_opaque_caps, rc := ygo.YH_string_to_capabilities("exportable-under-wrap")
   print_rc(rc)
-  rc = ygo.YH_util_import_opaque(sess, &object_id, label, domains, yh_opaque_caps, ygo.YH_ALGO_OPAQUE_DATA, wrapped_master)
+  rc = ygo.YH_util_import_opaque(sess, &object_id, label, domains, yh_opaque_caps, ygo.YH_ALGO_OPAQUE_DATA, wrapped_master, len(wrapped_master))
   print_rc(rc)
 
-  get_opaque, rc := ygo.YH_util_get_opaque(sess, object_id, 10000)
+  get_opaque_len := 1000
+  get_opaque := make([]byte, get_opaque_len)
+  rc = ygo.YH_util_get_opaque(sess, object_id, get_opaque, &get_opaque_len)
   print_rc(rc)
 
-  if reflect.DeepEqual(wrapped_master, get_opaque) {
+  if reflect.DeepEqual(wrapped_master, get_opaque[:get_opaque_len]) {
     fmt.Printf("Imported and exported opaque are deep-equal\n")
   }
 
@@ -162,6 +174,6 @@ func main() {
 
 func print_rc(rc ygo.YH_rc) {
   if rc != 0 {
-    fmt.Printf("Error %d: %s\n",rc, ygo.YH_strerror(rc))
+    panic(errors.New(fmt.Sprintf("Error %d: %s\n",rc, ygo.YH_strerror(rc))))
   }
 }
